@@ -51,7 +51,7 @@ async function greetUser({ first_name, last_name, chatId, userId }: { first_name
         MarketService.getMarketValue({ currency: "BRL" }).then(async (quotation) => {
             bot.sendMessage(chatId, "O valor do Bitcoin agora é de " + quotation.formattedPrice);
         });
-        return bot.sendMessage(chatId, `Olá, seja bem vindo ${first_name} meu nome é Algumacoisa, sou um Bot da Bee2P, estou aqui para te auxiliar a comprar seus Bitcoins de forma segura e privada. Para prosseguirmos me informe a quantidade em reais que você deseja comprar de Bitcoin`);
+        return bot.sendMessage(chatId, `Olá, seja bem vindo ${first_name} meu nome é Patolino, sou um Bot da P2Pato, estou aqui para te auxiliar a comprar seus Bitcoins de forma segura e privada.\n\nPara prosseguirmos me informe a quantidade em reais que você deseja comprar de Bitcoin`);
     }
 
     const toProceedText = "Para prosseguirmos me informe a quantidade em reais que você deseja comprar de Bitcoin.";
