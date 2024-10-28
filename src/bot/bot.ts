@@ -93,7 +93,7 @@ async function handlePayment({ chatId, userId, msg }: { chatId: number, userId: 
         const response = await PaymentService.createPayment({ telegram_id: userId.toString(), amount_in_cents: onGoingChat.amount_in_cents, wallet_address: msg.text, chat_id: chatId });
         updateOnGoingChat(chatId, userId, TransactionStage.AWAITING_PAYMENT, onGoingChat.amount_in_cents, isWalletAddress);
         await bot.sendMessage(chatId, `Obrigado por informar o endereço da sua carteira ${isWalletAddress}, seu código pix copia e cola é :`);
-        bot.sendDocument(chatId, response.pixQRCode);
+        bot.sendPhoto(chatId, response.pixQRCode);
         return bot.sendMessage(chatId, response.pixCopyAndPaste);
     }
     return bot.sendMessage(chatId, `Não foi possível identificar a transação, por favor, tente novamente.`);
