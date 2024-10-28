@@ -9,9 +9,10 @@ export default class PaymentService {
     public static async notifyPayment({ transaction_id }: { transaction_id: string; }) {
         const payment = await PaymentRepository.getPaymentTransactionId(transaction_id);
         if (!payment) throw new Error("Payment not found");
-        if (payment.status !== PaymentStatus.PENDING) return "OK";
+        if (payment.status === PaymentStatus.APPROVED || payment.status === PaymentStatus.REJECTED) return "OK";
         const { amount_in_cents, wallet_address, chat_id } = payment;
         await BOT.notifyPayment({ amount_in_cents, wallet_address, chat_id: parseInt(chat_id) });
+        await PaymentRepository.updatePaymentStatus(transaction_id, PaymentStatus.APPROVED);
         return "OK";
     }
 
