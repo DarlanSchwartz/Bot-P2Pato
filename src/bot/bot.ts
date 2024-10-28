@@ -51,14 +51,14 @@ async function greetUser({ first_name, last_name, chatId, userId }: { first_name
         MarketService.getMarketValue({ currency: "BRL" }).then(async (quotation) => {
             bot.sendMessage(chatId, "O valor do Bitcoin agora é de " + quotation.formattedPrice);
         });
-        return bot.sendMessage(chatId, `Olá, seja bem vindo **${first_name}** meu nome é Patolino, sou um Bot da **P2Pato**, estou aqui para te auxiliar a comprar seus Bitcoins de forma segura e privada.\n\nPara prosseguirmos me informe a quantidade em reais que você deseja comprar de Bitcoin`);
+        return bot.sendMessage(chatId, `Olá, seja bem vindo ${first_name} meu nome é Patolino, sou um Bot da P2Pato, estou aqui para te auxiliar a comprar seus Bitcoins de forma segura e privada.\n\nPara prosseguirmos me informe a quantidade em reais que você deseja comprar de Bitcoin`);
     }
 
     const toProceedText = "Para prosseguirmos me informe a quantidade em reais que você deseja comprar de Bitcoin.";
-    bot.sendMessage(chatId, `Olá, novamente **${first_name}** , que bom te ver por aqui! Estou aqui para te auxiliar a comprar seus Bitcoins de forma segura e privada.\n\n${toProceedText}\n\nExemplo: \n\nEu quero comprar: 1000\n\n1000 \n\ncomprar 1000`);
+    bot.sendMessage(chatId, `Olá, novamente ${first_name} , que bom te ver por aqui! Estou aqui para te auxiliar a comprar seus Bitcoins de forma segura e privada.\n\n${toProceedText}\n\nExemplo: \n\nEu quero comprar: 1000\n\n1000 \n\ncomprar 1000`);
     onGoingChats.push({ chat_id: chatId.toString(), userId, stage: TransactionStage.AWAITING_AMOUNT });
     MarketService.getMarketValue({ currency: "BRL" }).then(async (quotation) => {
-        bot.sendMessage(chatId, `O valor do Bitcoin agora é de **${quotation.formattedPrice}**`);
+        bot.sendMessage(chatId, `O valor do Bitcoin agora é de ${quotation.formattedPrice}`);
     });
 }
 
@@ -68,7 +68,7 @@ async function handlePaymentAmount({ chatId, userId, msg }: { chatId: number, us
     if (isAPurchaseRequest) {
         const value = extractNumber(msg?.text);
         if (!value) return bot.sendMessage(chatId, `Não consegui identificar o valor que você deseja comprar, por favor, tente novamente.`);
-        if (value < 100) return bot.sendMessage(chatId, `O valor mínimo para compra é de **R$ 100,00**`);
+        if (value < 100) return bot.sendMessage(chatId, `O valor mínimo para compra é de R$ 100,00`);
         const quotation = await MarketService.getMarketValue({ currency: "BRL" });
         const formattedPrice = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: "BRL" }).format(value);
         const conversion = `O valor de ${formattedPrice} convertido para Bitcoin é de ${(value / quotation.price).toFixed(8)} BTC`;
@@ -90,7 +90,7 @@ async function handlePayment({ chatId, userId, msg }: { chatId: number, userId: 
     if (!!onGoingChat.amount_in_cents) {
         const { pix_copy_paste, qr_code } = await PaymentService.createPayment({ telegram_id: userId.toString(), amount_in_cents: onGoingChat.amount_in_cents, wallet_address: msg.text, chat_id: chatId });
         updateOnGoingChat(chatId.toString(), userId, TransactionStage.AWAITING_PAYMENT, onGoingChat.amount_in_cents, isWalletAddress);
-        await bot.sendMessage(chatId, `Obrigado por informar o endereço da sua carteira **${isWalletAddress}** , seu código pix copia e cola é :`);
+        await bot.sendMessage(chatId, `Obrigado por informar o endereço da sua carteira ${isWalletAddress} , seu código pix copia e cola é :`);
         await bot.sendMessage(chatId, pix_copy_paste);
         return bot.sendPhoto(chatId, qr_code);
 
