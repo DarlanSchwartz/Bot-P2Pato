@@ -6,18 +6,17 @@ import PaymentService from "../payments/payment.service";
 const BOT_TOKEN = process.env.BOT_TOKEN ?? "";
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
-
 const enum TransactionStage {
     AWAITING_AMOUNT = 0,
     AWAITING_WALLET_ADDRESS = 1,
     AWAITING_PAYMENT = 2,
     COMPLETED = 3
 }
-const onGoingChats: { chat_id: number, userId: number; stage: TransactionStage; amount_in_cents?: number, wallet_address?: string; }[] = [];
+const onGoingChats: { chat_id: string, userId: number; stage: TransactionStage; amount_in_cents?: number, wallet_address?: string; }[] = [];
 
 async function notifyPayment({ amount_in_cents, wallet_address, chat_id }: { chat_id: number, amount_in_cents: number, wallet_address: string; }) {
     const paymentValue = (amount_in_cents / 100);
-    removeOnGoingChat(chat_id);
+    removeOnGoingChat(chat_id.toString());
     const formattedValue = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: "BRL" }).format(paymentValue);
     bot.sendMessage(chat_id, `Seu pagamento de ${formattedValue} para a carteira ${wallet_address} foi recebido com sucesso!`);
 
@@ -29,7 +28,7 @@ function extractNumber(str?: string) {
     return match ? parseInt(match[0], 10) : null;
 }
 
-function updateOnGoingChat(chatId: number, userId: number, stage: TransactionStage, amount_in_cents?: number, wallet_address?: string) {
+function updateOnGoingChat(chatId: string, userId: number, stage: TransactionStage, amount_in_cents?: number, wallet_address?: string) {
     const chat = onGoingChats.find(chat => chat.chat_id === chatId);
     if (!chat) return onGoingChats.push({ chat_id: chatId, userId, stage, amount_in_cents, wallet_address });
     chat.stage = stage;
@@ -38,10 +37,9 @@ function updateOnGoingChat(chatId: number, userId: number, stage: TransactionSta
     onGoingChats.map(chat => chat.chat_id === chatId ? chat : chat);
 }
 
-function removeOnGoingChat(chatId: number) {
+function removeOnGoingChat(chatId: string) {
     const index = onGoingChats.findIndex(chat => chat.chat_id === chatId);
     if (index !== -1) onGoingChats.splice(index, 1);
-
 }
 
 async function greetUser({ first_name, last_name, chatId, userId }: { first_name: string, last_name: string, chatId: number, userId: number; }) {
@@ -49,7 +47,7 @@ async function greetUser({ first_name, last_name, chatId, userId }: { first_name
 
     if (!exists) {
         await UsersService.createUser({ telegram_id: userId.toString(), first_name, last_name });
-        onGoingChats.push({ chat_id: chatId, userId, stage: TransactionStage.AWAITING_AMOUNT });
+        onGoingChats.push({ chat_id: chatId.toString(), userId, stage: TransactionStage.AWAITING_AMOUNT });
         MarketService.getMarketValue({ currency: "BRL" }).then(async (quotation) => {
             bot.sendMessage(chatId, "O valor do Bitcoin agora é de " + quotation.formattedPrice);
         });
@@ -58,7 +56,7 @@ async function greetUser({ first_name, last_name, chatId, userId }: { first_name
 
     const toProceedText = "Para prosseguirmos me informe a quantidade em reais que você deseja comprar de Bitcoin.";
     bot.sendMessage(chatId, `Olá, novamente ${first_name}, que bom te ver por aqui! Estou aqui para te auxiliar a comprar seus Bitcoins de forma segura e privada.\n\n${toProceedText}\n\nExemplo: \n\nEu quero comprar: 1000\n\n1000 \n\ncomprar 1000`);
-    onGoingChats.push({ chat_id: chatId, userId, stage: TransactionStage.AWAITING_AMOUNT });
+    onGoingChats.push({ chat_id: chatId.toString(), userId, stage: TransactionStage.AWAITING_AMOUNT });
     MarketService.getMarketValue({ currency: "BRL" }).then(async (quotation) => {
         bot.sendMessage(chatId, "O valor do Bitcoin agora é de " + quotation.formattedPrice);
     });
@@ -77,7 +75,7 @@ async function handlePaymentAmount({ chatId, userId, msg }: { chatId: number, us
         const yesMessage = `Se sim, por favor, me informe o seu endereço da sua carteira Lighting Network para que eu possa gerar um código PIX copia e cola para você.`;
         const currentBTCPriceText = `O valor do Bitcoin agora é de ${quotation.formattedPrice}`;
         const theValueWillBeConverted = `O valor ${formattedPrice} será convertido em Bitcoin e enviado para o endereço de carteira que você informar.`;
-        updateOnGoingChat(chatId, userId, TransactionStage.AWAITING_WALLET_ADDRESS, value * 100);
+        updateOnGoingChat(chatId.toString(), userId, TransactionStage.AWAITING_WALLET_ADDRESS, value * 100);
         return bot.sendMessage(chatId, `Você deseja comprar ${formattedPrice} em Bitcoin, correto?\n\n${yesMessage}\n\n${theValueWillBeConverted}\n\n${currentBTCPriceText}\n\n${conversion}`);
     }
     if (!isAPurchaseRequest) bot.sendMessage(chatId, `Não consegui identificar o valor que você deseja comprar, por favor, tente novamente.`);
@@ -90,11 +88,18 @@ async function handlePayment({ chatId, userId, msg }: { chatId: number, userId: 
     const onGoingChat = onGoingChats.find(chat => chat.userId === userId && !!chat.amount_in_cents);
     if (!onGoingChat) return bot.sendMessage(chatId, `Não foi possível identificar a transação, por favor, tente novamente.`);
     if (!!onGoingChat.amount_in_cents) {
-        const response = await PaymentService.createPayment({ telegram_id: userId.toString(), amount_in_cents: onGoingChat.amount_in_cents, wallet_address: msg.text, chat_id: chatId });
-        updateOnGoingChat(chatId, userId, TransactionStage.AWAITING_PAYMENT, onGoingChat.amount_in_cents, isWalletAddress);
+        const { pix_copy_paste, qr_code } = await PaymentService.createPayment({ telegram_id: userId.toString(), amount_in_cents: onGoingChat.amount_in_cents, wallet_address: msg.text, chat_id: chatId });
+        updateOnGoingChat(chatId.toString(), userId, TransactionStage.AWAITING_PAYMENT, onGoingChat.amount_in_cents, isWalletAddress);
         await bot.sendMessage(chatId, `Obrigado por informar o endereço da sua carteira ${isWalletAddress}, seu código pix copia e cola é :`);
-        bot.sendPhoto(chatId, response.pixQRCode);
-        return bot.sendMessage(chatId, response.pixCopyAndPaste);
+        await bot.sendMessage(chatId, pix_copy_paste, {
+            reply_markup: {
+                keyboard: [
+                    [{ text: "Ver QR Code" }],
+                ],
+            }
+        });
+        return bot.sendPhoto(chatId, qr_code);
+
     }
     return bot.sendMessage(chatId, `Não foi possível identificar a transação, por favor, tente novamente.`);
 }
@@ -102,7 +107,7 @@ async function handlePayment({ chatId, userId, msg }: { chatId: number, userId: 
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from?.id ?? 0;
-    const chatStage = onGoingChats.find(chat => chat.chat_id === chatId);
+    const chatStage = onGoingChats.find(chat => chat.chat_id === chatId.toString());
     switch (chatStage?.stage) {
         case TransactionStage.AWAITING_AMOUNT:
             return handlePaymentAmount({ chatId, userId, msg });

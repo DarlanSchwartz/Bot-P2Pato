@@ -3,10 +3,11 @@ import PaymentRepository from "./payments.repository";
 import { PaymentStatus } from "./payment.types";
 import UsersRepository from "../users/users.repository";
 import Utils from "../utils/utils";
+import axios from "axios";
 
 export default class PaymentService {
-    public static async notifyPayment({ transactionId }: { transactionId: string; }) {
-        const payment = await PaymentRepository.getPaymentTransactionId(transactionId);
+    public static async notifyPayment({ transaction_id }: { transaction_id: string; }) {
+        const payment = await PaymentRepository.getPaymentTransactionId(transaction_id);
         if (!payment) throw new Error("Payment not found");
         if (payment.status !== PaymentStatus.PENDING) return "OK";
         const { amount_in_cents, wallet_address, chat_id } = payment;
@@ -15,14 +16,16 @@ export default class PaymentService {
     }
 
     public static async createPayment({ telegram_id, amount_in_cents, wallet_address, chat_id }: { telegram_id: string, amount_in_cents: number, wallet_address: string; chat_id: number; }) {
-        const randomUUID = crypto.randomUUID();
-        const code = "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";
-        const image = Utils.getBase64Image(code);
-        const response = { data: { transactionId: randomUUID, pixCopyAndPaste: "asdhgasjkdhasjkdasd", pixQRCode: image } };
-        const transaction_id = response.data.transactionId;
+        const response = await axios.post<{ transaction_id: string, pix_copy_paste: string, qr_code: string; link: string; }>(`${process.env.API_URL}/payment`, {
+            amount_in_cents,
+            wallet_address
+        });
+
+        const { pix_copy_paste, qr_code, transaction_id } = response.data;
+
         const user = await UsersRepository.getUser({ telegram_id });
         if (!user) throw new Error("User not found");
-        await PaymentRepository.createPayment({ user_id: user.id, amount_in_cents, wallet_address, transaction_id, chat_id, pix_copy_and_paste: response.data.pixCopyAndPaste });
-        return { pixCopyAndPaste: response.data.pixCopyAndPaste, pixQRCode: response.data.pixQRCode };
+        await PaymentRepository.createPayment({ user_id: user.id, amount_in_cents, wallet_address, transaction_id, chat_id, pix_copy_and_paste: response.data.pix_copy_paste });
+        return { pix_copy_paste, qr_code: Utils.getBase64Image(qr_code) };
     }
 }
