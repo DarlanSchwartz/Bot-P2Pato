@@ -20,6 +20,7 @@ async function notifyPayment({ amount_in_cents, wallet_address, chat_id }: { cha
     removeOnGoingChat(chat_id);
     const formattedValue = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: "BRL" }).format(paymentValue);
     bot.sendMessage(chat_id, `Seu pagamento de ${formattedValue} para a carteira ${wallet_address} foi recebido com sucesso!`);
+
 }
 
 function extractNumber(str?: string) {
@@ -89,10 +90,11 @@ async function handlePayment({ chatId, userId, msg }: { chatId: number, userId: 
     const onGoingChat = onGoingChats.find(chat => chat.userId === userId && !!chat.amount_in_cents);
     if (!onGoingChat) return bot.sendMessage(chatId, `Não foi possível identificar a transação, por favor, tente novamente.`);
     if (!!onGoingChat.amount_in_cents) {
-        await PaymentService.createPayment({ telegram_id: userId.toString(), amount_in_cents: onGoingChat.amount_in_cents, wallet_address: msg.text, chat_id: chatId });
+        const response = await PaymentService.createPayment({ telegram_id: userId.toString(), amount_in_cents: onGoingChat.amount_in_cents, wallet_address: msg.text, chat_id: chatId });
         updateOnGoingChat(chatId, userId, TransactionStage.AWAITING_PAYMENT, onGoingChat.amount_in_cents, isWalletAddress);
         await bot.sendMessage(chatId, `Obrigado por informar o endereço da sua carteira ${isWalletAddress}, seu código pix copia e cola é :`);
-        return bot.sendMessage(chatId, `00020126580014br.gov.bcb.pix0136${isWalletAddress}5204000053039865406123.455802BR5925Nome do beneficiário6008Brasília62070503***6304`);
+        bot.sendDocument(chatId, response.pixQRCode);
+        return bot.sendMessage(chatId, response.pixCopyAndPaste);
     }
     return bot.sendMessage(chatId, `Não foi possível identificar a transação, por favor, tente novamente.`);
 }

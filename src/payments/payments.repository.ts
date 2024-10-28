@@ -9,7 +9,7 @@ export default class PaymentRepository {
         return response;
     }
 
-    public static async createPayment({ user_id, amount_in_cents, wallet_address, transaction_id, chat_id }: { user_id: number, amount_in_cents: number, wallet_address: string; chat_id: number; transaction_id: string; }) {
+    public static async createPayment({ user_id, amount_in_cents, wallet_address, transaction_id, chat_id, pix_copy_and_paste }: { user_id: number, amount_in_cents: number, wallet_address: string; chat_id: number; transaction_id: string; pix_copy_and_paste: string; }) {
         const payment = await prisma.payments.create({
             data: {
                 user_id,
@@ -17,7 +17,8 @@ export default class PaymentRepository {
                 wallet_address,
                 status: PaymentStatus.PENDING,
                 transaction_id,
-                chat_id: chat_id.toString()
+                chat_id: chat_id.toString(),
+                pix_copy_and_paste
             }
         });
         return payment;

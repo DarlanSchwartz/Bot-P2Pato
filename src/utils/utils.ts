@@ -16,4 +16,9 @@ export default class Utils {
     public static generatePixCode() {
         return Math.random().toString(36).substring(2, 12).toUpperCase();
     }
+
+    public static getBase64Image(base64: string) {
+        const base64Data = base64.replace(/^data:image\/\w+;base64,/, '');
+        return Buffer.from(base64Data, 'base64');
+    }
 }
